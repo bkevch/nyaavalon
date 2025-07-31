@@ -1,23 +1,36 @@
 <!-- src/routes/+page.svelte -->
 <script>
-    /** @type {string | null} */
-    let gameId; // This will hold the ID of the created game room.
+    import { goto } from '$app/navigation';
+    let gameId = ""; // This will hold the ID of the created game room.
     let isLoading = false; // Used to give feedback while the server is thinking.
     let copyButtonText = 'Copy Link'; // Text for the copy button.
-
+    let hostName = "";
+    let myPlayerId = null;
+    let hasJoined = false;
+    // This will be set to true once the host has created a game room.
     // This function will be called when the "Start New Game" button is clicked.
     async function createGame() {
+        if (!hostName.trim()) {
+            alert('Please enter your name.');
+            return;
+        }
         isLoading = true;
         copyButtonText = 'Copy Link'; // Reset button text
 
         // Make a POST request to our API endpoint.
         const response = await fetch('/api/create-game', {
-            method: 'POST'
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playerName: hostName })
         });
 
         if (response.ok) {
             const data = await response.json();
-            gameId = data.gameId; // Update our variable with the ID from the server.
+            gameId = data.gameId;
+            myPlayerId = data.playerId;
+            hasJoined = true;
+            // Navigate to the game lobby page
+            goto(`/game/${gameId}`);
         } else {
             alert('Error creating game. Please try again.');
         }
@@ -46,14 +59,19 @@
     <p>Create a game room and invite your friends to play.</p>
 
     <!-- Task: Create a "Start New Game" button on the main page. -->
-    {#if !gameId}
-        <button on:click={createGame} disabled={isLoading}>
-            {isLoading ? 'Creating...' : 'Start New Game'}
-        </button>
+
+    {#if !hasJoined}
+        <div class="join-form">
+            <input type="text" bind:value={hostName} placeholder="Enter your name" />
+            <button on:click={createGame} disabled={isLoading}>
+                {isLoading ? 'Creating...' : 'Start New Game'}
+            </button>
+        </div>
     {/if}
 
     <!-- This section will appear AFTER a game room has been created. -->
-    {#if gameId}
+    {#if hasJoined && gameId}
+        
         <div class="game-link-container">
             <h2>Your Game Room is Ready!</h2>
             <p>Share this link with your friends:</p>
@@ -61,6 +79,7 @@
                 <input type="text" value="{window.location.origin}/game/{gameId}" readonly />
                 <button on:click={copyLink}>{copyButtonText}</button>
             </div>
+            <p><strong>You are the host. </strong></p>
         </div>
     {/if}
 </main>

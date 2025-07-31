@@ -81,14 +81,20 @@
 <main>
     <h1>Avalon Lobby</h1>
     <p>Game ID: <strong>{gameId}</strong></p>
-
+    <button on:click={() => {
+        playerName = 'Guest' + Math.floor(Math.random() * 1000);
+        joinGame();
+    }}>
+        Quick Join as Guest
+    </button>
     {#if !hasJoined}
         <div class="join-form">
             <input type="text" bind:value={playerName} placeholder="Enter your name" />
             <button on:click={joinGame}>Join Game</button>
         </div>
+
     {:else}
-        <h2>Players in Lobby</h2>
+        <h2>Players in Lobby: {players.length}</h2>
         <p>Your name: <strong>{players.find(p => p.id === myPlayerId)?.name || ''}</strong></p>
 
         <ul class="player-list">
