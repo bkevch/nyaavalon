@@ -1,7 +1,6 @@
 // src/lib/server/game-store.ts
 
 import type { Game, Player } from '$lib/types';
-import { getIO } from '$lib/server/socket-server';
 
 // The Map is now strongly typed: it maps a string (gameId) to a Game object.
 export const activeGames: Map<string, Game> = new Map();
@@ -19,7 +18,6 @@ export function updateGame(gameId: string, updateFunction: (game: Game) => void)
     activeGames.set(gameId, game);
 
     // Broadcast the updated player list to the room
-    const io = getIO();
     io.to(gameId).emit('update-lobby', game.players);
 
     return game;

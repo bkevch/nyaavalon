@@ -9,5 +9,6 @@ export interface Game {
     id: string;
     players: Player[];
     state: 'lobby' | 'in-progress' | 'finished';
+    hostId: string;
     // We can add more game state properties here later
 }

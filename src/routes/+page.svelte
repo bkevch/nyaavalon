@@ -1,136 +1,69 @@
-<!-- src/routes/+page.svelte -->
-<script>
-    import { goto } from '$app/navigation';
-    let gameId = ""; // This will hold the ID of the created game room.
-    let isLoading = false; // Used to give feedback while the server is thinking.
-    let copyButtonText = 'Copy Link'; // Text for the copy button.
-    let hostName = "";
-    let myPlayerId = null;
-    let hasJoined = false;
-    // This will be set to true once the host has created a game room.
-    // This function will be called when the "Start New Game" button is clicked.
-    async function createGame() {
-        if (!hostName.trim()) {
-            alert('Please enter your name.');
-            return;
-        }
-        isLoading = true;
-        copyButtonText = 'Copy Link'; // Reset button text
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
+  import io, { Socket } from 'socket.io-client';
 
-        // Make a POST request to our API endpoint.
-        const response = await fetch('/api/create-game', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ playerName: hostName })
-        });
+  let socket: Socket;
+  let hostName = '';
 
-        if (response.ok) {
-            const data = await response.json();
-            gameId = data.gameId;
-            myPlayerId = data.playerId;
-            hasJoined = true;
-            // Navigate to the game lobby page
-            goto(`/game/${gameId}`);
-        } else {
-            alert('Error creating game. Please try again.');
-        }
+  onMount(() => {
+    socket = io();
 
-        isLoading = false;
+    socket.on('gameCreated', ({ lobbyId }) => {
+      goto(`/lobby/${lobbyId}`);
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  });
+
+  function createLobby() {
+    if (hostName) {
+      socket.emit('create-game', { hostName });
     }
-
-    // Task: Provide an easy way for the host to copy the link/code.
-    function copyLink() {
-        // Construct the full, shareable URL.
-        const shareableLink = `${window.location.origin}/game/${gameId}`;
-        
-        // Use the browser's Clipboard API to copy the text.
-        navigator.clipboard.writeText(shareableLink);
-
-        // Provide visual feedback to the user.
-        copyButtonText = 'Copied!';
-        setTimeout(() => {
-            copyButtonText = 'Copy Link';
-        }, 2000); // Reset after 2 seconds
-    }
+  }
 </script>
-
 <main>
-    <h1>Welcome to Avalon</h1>
-    <p>Create a game room and invite your friends to play.</p>
-
-    <!-- Task: Create a "Start New Game" button on the main page. -->
-
-    {#if !hasJoined}
-        <div class="join-form">
-            <input type="text" bind:value={hostName} placeholder="Enter your name" />
-            <button on:click={createGame} disabled={isLoading}>
-                {isLoading ? 'Creating...' : 'Start New Game'}
-            </button>
-        </div>
-    {/if}
-
-    <!-- This section will appear AFTER a game room has been created. -->
-    {#if hasJoined && gameId}
-        
-        <div class="game-link-container">
-            <h2>Your Game Room is Ready!</h2>
-            <p>Share this link with your friends:</p>
-            <div class="link-box">
-                <input type="text" value="{window.location.origin}/game/{gameId}" readonly />
-                <button on:click={copyLink}>{copyButtonText}</button>
-            </div>
-            <p><strong>You are the host. </strong></p>
-        </div>
-    {/if}
+  <h1>Create a Lobby</h1>
+  <input type="text" bind:value={hostName} placeholder="Enter your name" />
+  <button class="bottom-button" on:click={createLobby} disabled={!hostName}>Create Lobby</button>
 </main>
 
 <style>
-    main {
-        text-align: center;
-        padding: 2rem;
-        font-family: sans-serif;
-    }
+  main {
+    text-align: center;
+    padding: 2rem;
+    font-family: sans-serif;
+  }
 
-    button {
-        font-size: 1.2rem;
-        padding: 0.8rem 1.5rem;
-        border-radius: 8px;
-        border: none;
-        background-color: #007bff;
-        color: white;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
+  button {
+    font-size: 1.2rem;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
 
-    button:hover {
-        background-color: #0056b3;
-    }
+  .bottom-button {
+    position: fixed;
+    left: 50%;
+    bottom: 2rem;
+    transform: translateX(-50%);
+    z-index: 100;
+    width: max-content;
+  }
 
-    button:disabled {
-        background-color: #cccccc;
-        cursor: not-allowed;
-    }
+  button:hover {
+    background-color: #0056b3;
+  }
 
-    .game-link-container {
-        margin-top: 2rem;
-        padding: 2rem;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: #f9f9f9;
-    }
+  button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
 
-    .link-box {
-        display: flex;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-
-    .link-box input {
-        font-size: 1rem;
-        padding: 0.5rem;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        width: 300px;
-        background-color: #fff;
-    }
 </style>
