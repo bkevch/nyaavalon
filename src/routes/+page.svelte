@@ -9,8 +9,8 @@
   onMount(() => {
     socket = io();
 
-    socket.on('gameCreated', ({ lobbyId }) => {
-      goto(`/lobby/${lobbyId}`);
+    socket.on('gameCreated', ({ gameId }) => {
+      goto(`/game/${gameId}`);
     });
 
     return () => {
@@ -24,6 +24,7 @@
     }
   }
 </script>
+
 <main>
   <h1>Create a Lobby</h1>
   <input type="text" bind:value={hostName} placeholder="Enter your name" />

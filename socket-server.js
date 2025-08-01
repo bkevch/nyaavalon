@@ -4,11 +4,16 @@ import http from 'http';
 import { Server } from 'socket.io';
 // If using SvelteKit, the handler is usually at '../build/handler.js' or '../.svelte-kit/output/server/handler.js'
 // Update the path below if needed:
-import { handler } from '../../../build/handler.js'; // SvelteKit handler
+import { handler } from './build/handler.js'; // SvelteKit handler
 
 const app  = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, { // need cors bc of two ports for vite and socket.io
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"]
+  }
+});
 
 const lobbies = new Map();
 
@@ -47,7 +52,7 @@ io.on('connection', (socket) => {
 });
 
 // Have SvelteKit handle all other requests
-app.use(handler);
+// app.use(handler);
 
 server.listen(3000, () => {
   console.log('Server running on http://localhost:3000');
