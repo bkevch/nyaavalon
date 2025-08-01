@@ -1,12 +1,12 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/state';
-  import io from 'socket.io-client';
+  import io, { Socket } from 'socket.io-client';
 
   /**
      * @type {import("socket.io-client").Socket<import("@socket.io/component-emitter").DefaultEventsMap, import("@socket.io/component-emitter").DefaultEventsMap>}
      */
-  let socket;
+  let socket: Socket;
   /** @type {{ name: string }[]} */
   let hostId = '';
   let users = [];
