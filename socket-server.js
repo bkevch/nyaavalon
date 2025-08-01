@@ -19,10 +19,12 @@ io.on('connection', (socket) => {
   socket.on('create-game', ({ hostName }) => {
     console.log('Game created by:', hostName);
     const gameId = Math.random().toString(36).substring(2, 8);
+    //TODO: use Player class for host
+    let host = {name: hostName, id: Math.random().toString(36).substring(2, 10)};
     console.log("the gameId is: ", gameId);
-    games.set(gameId, {
-      host: hostName,
-      users: [{ id: socket.id, name: hostName }],
+    games.set(gameId, { //lobby state
+      hostId: host.id,
+      users: [host],
     });
     console.log("set lobby with host name: ", hostName, " and gameId: ", gameId);
 
@@ -30,13 +32,15 @@ io.on('connection', (socket) => {
     socket.emit('gameCreated',  { gameId: gameId} );
     console.log('emitting gameCreated with gameId:', gameId);
     io.to(gameId).emit('updateUsers', games.get(gameId).users);
+    io.to(gameId).emit('updateHostId', games.get(gameId).hostId);
     console.log('Users: ', games.get(gameId).users, ' updated for game:', gameId);
   });
 
-  socket.on('join-game', ({ username, gameId }) => {
+  socket.on('join-lobby', ({ gameId, username }) => {
     if (games.has(gameId)) {
+      let user = {name: username, id: Math.random().toString(36).substring(2, 10)};
       const game = games.get(gameId);
-      game.users.push({ id: socket.id, name: username });
+      game.users.push(user);
       socket.join(gameId);
       io.to(gameId).emit('updateUsers', game.users);
       console.log(`${username} joined game ${gameId}`);

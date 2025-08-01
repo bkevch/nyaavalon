@@ -18,6 +18,7 @@
     };
   });
 
+  // Only host can create a lobby
   function createLobby() {
     if (hostName) {
       socket.emit('create-game', { hostName });

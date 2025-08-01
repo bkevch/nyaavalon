@@ -8,6 +8,7 @@
      */
   let socket;
   /** @type {{ name: string }[]} */
+  let hostId = '';
   let users = [];
   let lobbyId = page.params.gameId || '';
   let userName = '';
@@ -24,6 +25,11 @@
       users = updatedUsers;
     });
 
+    socket.on('updateHostId', (newHostId) => {
+      hostId = newHostId;
+      console.log('HostId updated:', newHostId);
+    });
+
     socket.on('error', (error) => {
       alert(error.message);
     });
@@ -33,9 +39,10 @@
     };
   });
 
+  // Host should not call this function, only other users
   function joinLobby() {
     if (userName) {
-      socket.emit('joinLobby', { lobbyId, userName });
+      socket.emit('join-lobby', { lobbyId, userName });
       hasJoined = true;
     }
   }
