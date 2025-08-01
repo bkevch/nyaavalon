@@ -2,9 +2,6 @@
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
-// If using SvelteKit, the handler is usually at '../build/handler.js' or '../.svelte-kit/output/server/handler.js'
-// Update the path below if needed:
-import { handler } from './build/handler.js'; // SvelteKit handler
 
 const app  = express();
 const server = http.createServer(app);
@@ -15,31 +12,33 @@ const io = new Server(server, { // need cors bc of two ports for vite and socket
   }
 });
 
-const lobbies = new Map();
-
-// Socket.IO connection handling
+const games = new Map();
 io.on('connection', (socket) => {
   console.log('a user connected');
 
   socket.on('create-game', ({ hostName }) => {
     console.log('Game created by:', hostName);
-    const lobbyId = Math.random().toString(36).substring(2, 8);
-    lobbies.set(lobbyId, {
+    const gameId = Math.random().toString(36).substring(2, 8);
+    console.log("the gameId is: ", gameId);
+    games.set(gameId, {
       host: hostName,
       users: [{ id: socket.id, name: hostName }],
     });
+    console.log("set lobby with host name: ", hostName, " and gameId: ", gameId);
 
-    socket.join(lobbyId);
-    socket.emit('gameCreated', { lobbyId });
-    io.to(lobbyId).emit('updateUsers', lobbies.get(lobbyId).users);
+    socket.join(gameId);
+    socket.emit('gameCreated',  { gameId: gameId} );
+    console.log('emitting gameCreated with gameId:', gameId);
+    io.to(gameId).emit('updateUsers', games.get(gameId).users);
+    console.log('Users: ', games.get(gameId).users, ' updated for game:', gameId);
   });
 
   socket.on('join-game', ({ username, gameId }) => {
-    if (lobbies.has(gameId)) {
-      const lobby = lobbies.get(gameId);
-      lobby.users.push({ id: socket.id, name: username });
+    if (games.has(gameId)) {
+      const game = games.get(gameId);
+      game.users.push({ id: socket.id, name: username });
       socket.join(gameId);
-      io.to(gameId).emit('updateUsers', lobby.users);
+      io.to(gameId).emit('updateUsers', game.users);
       console.log(`${username} joined game ${gameId}`);
     } else {
       socket.emit('error', { message: 'Game not found' });
