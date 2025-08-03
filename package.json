@@ -6,7 +6,7 @@
 	"scripts": {
 		"dev": "npm-run-all --parallel dev:sveltekit dev:socket",
 		"dev:sveltekit": "vite dev",
-  	"dev:socket": "node socket-server.js",
+  	"dev:socket": "node src/lib/server/socket-server.js",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",

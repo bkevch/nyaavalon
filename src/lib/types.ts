@@ -12,3 +12,9 @@ export interface Game {
     hostId: string;
     // We can add more game state properties here later
 }
+
+export interface Lobby { 
+    gameId: string;
+    users: Player[];
+    hostId: string;
+}

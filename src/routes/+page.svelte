@@ -7,13 +7,27 @@
   const createLobbyButtonText = 'cweate wobby';
 
   let socket: Socket;
+  let users = [];
+  let amIHost: boolean = false; 
   let hostName = '';
+  let hasJoined = true;
 
   onMount(() => {
     socket = io();
 
+    socket.on('users', (updated) => {
+      console.log('Connected users:', updated);
+      users = updated;
+    });
+
     socket.on('gameCreated', ({ gameId }) => {
       goto(`/game/${gameId}`);
+    });
+
+    socket.on('updateHost', (newHostId) => {
+      hostName = newHostId;
+      hasJoined = true;
+      // console.log('HostId updated:', newHostId);
     });
 
     return () => {

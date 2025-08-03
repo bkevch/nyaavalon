@@ -2,17 +2,18 @@
   import { onMount } from 'svelte';
   import { page } from '$app/state';
   import io, { Socket } from 'socket.io-client';
+  import type { Player } from '$lib/types';
 
   /**
      * @type {import("socket.io-client").Socket<import("@socket.io/component-emitter").DefaultEventsMap, import("@socket.io/component-emitter").DefaultEventsMap>}
      */
   let socket: Socket;
   /** @type {{ name: string }[]} */
-  let hostId = '';
-  let users = [];
-  let lobbyId = page.params.gameId || '';
-  let userName = '';
-  let hasJoined = false;
+  let hostId: string = '';
+  let users: Player[] = [];
+  let lobbyId: string = page.params.gameId || '';
+  let userName: string = '';
+  let hasJoined: boolean = false;
 
   onMount(() => {
     socket = io();
@@ -25,9 +26,12 @@
       users = updatedUsers;
     });
 
-    socket.on('updateHostId', (newHostId) => {
+    // this'll only happen on game creation (for now)
+    // eventually we can let the host give host to another player
+    socket.on('updateHost', (newHostId) => {
       hostId = newHostId;
-      console.log('HostId updated:', newHostId);
+      hasJoined = true;
+      // console.log('HostId updated:', newHostId);
     });
 
     socket.on('error', (error) => {
@@ -61,6 +65,11 @@
     {/each}
   </ul>
 {/if}
+
+{#if hostId}
+  <p>Host ID: {hostId}</p>
+{/if}
+
 
 
 

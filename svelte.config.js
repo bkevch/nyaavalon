@@ -8,7 +8,7 @@ const config = {
 	preprocess: vitePreprocess(),
 
 	kit: {
-		adapter: adapter({entryPoint: 'src/lib/server/server.ts'}),
+		adapter: adapter({entryPoint: 'src/lib/server/socket-server.js'}),
 	}
 };
 

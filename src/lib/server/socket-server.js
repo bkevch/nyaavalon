@@ -13,27 +13,33 @@ const io = new Server(server, { // need cors bc of two ports for vite and socket
 });
 
 const games = new Map();
+
 io.on('connection', (socket) => {
-  console.log('a user connected');
+  console.log(`User connected: ${socket.id}`);
+  
+  const users = [];
+  // on any connection, get all users connected to the socket server
+  // and add them to the users array, then emit the array to the client
+  for (let [id, socket] of io.of("/").sockets) {
+    users.push({
+      name: id,
+      // username: socket.username,
+    });
+  }
+  socket.emit("users", users);
 
   socket.on('create-game', ({ hostName }) => {
-    console.log('Game created by:', hostName);
     const gameId = Math.random().toString(36).substring(2, 8);
+    const hostId = Math.random().toString(36).substring(2, 10);
     //TODO: use Player class for host
-    let host = {name: hostName, id: Math.random().toString(36).substring(2, 10)};
-    console.log("the gameId is: ", gameId);
-    games.set(gameId, { //lobby state
-      hostId: host.id,
-      users: [host],
-    });
-    console.log("set lobby with host name: ", hostName, " and gameId: ", gameId);
-
+    // const host = { name: hostName, id: hostId };
+    const host = { name: hostName }
+    const lobby = { gameId, hostName };
+    games.set(gameId, lobby); // games = [{ [gameId]: { gameId = gameId, lobby: { gameId, hostName } }]
     socket.join(gameId);
     socket.emit('gameCreated',  { gameId: gameId} );
-    console.log('emitting gameCreated with gameId:', gameId);
-    io.to(gameId).emit('updateUsers', games.get(gameId).users);
-    io.to(gameId).emit('updateHostId', games.get(gameId).hostId);
-    console.log('Users: ', games.get(gameId).users, ' updated for game:', gameId);
+    // io.to(gameId).emit('updateUsers', games.get(gameId).users);
+    io.to(gameId).emit('updateHost', games.get(gameId).hostName);
   });
 
   socket.on('join-lobby', ({ gameId, username }) => {
@@ -56,7 +62,6 @@ io.on('connection', (socket) => {
 
 // Have SvelteKit handle all other requests
 // app.use(handler);
-
 server.listen(3000, () => {
   console.log('Server running on http://localhost:3000');
 });
