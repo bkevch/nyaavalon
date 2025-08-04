@@ -1,17 +1,12 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import type { UserConfig } from 'vite';
+import { socketIoPlugin } from './vite-socket-io-plugin'; // 1. Import the plugin
 
 const config: UserConfig = {
-	plugins: [sveltekit()],
-	server: {
-		proxy: {
-			// Proxy WebSocket requests to the Socket.IO server
-			'/socket.io': {
-				target: 'ws://localhost:3000',
-				ws: true // Important for WebSocket proxying
-			}
-		}
-	}
+  plugins: [
+    sveltekit(),
+    socketIoPlugin // 2. Add the plugin to the plugins array
+  ]
 };
 
 export default config;
