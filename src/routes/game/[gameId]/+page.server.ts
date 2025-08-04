@@ -1,7 +1,10 @@
-export const load = async ({ params }) => {
+// src/routes/game/[gameId]/+page.server.ts
+
+import type { PageServerLoad } from "./$types";
+
+export const load: PageServerLoad  = async ({ params }) => {
+  // This function runs on the server. Its only job here is to
+  // get the gameId from the URL and pass it to the page component.
   const { gameId } = params;
-  // // Fetch initial game data from your server using the gameId
-  // const gameData = await fetchGameData(gameId);
-  // load the users, host;
   return { gameId: gameId };
 };

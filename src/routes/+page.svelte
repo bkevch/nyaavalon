@@ -7,27 +7,18 @@
   const createLobbyButtonText = 'cweate wobby';
 
   let socket: Socket;
-  let users = [];
-  let amIHost: boolean = false; 
   let hostName = '';
   let hasJoined = true;
 
   onMount(() => {
     socket = io();
 
-    socket.on('users', (updated) => {
-      console.log('Connected users:', updated);
-      users = updated;
-    });
-
-    socket.on('gameCreated', ({ gameId }) => {
-      goto(`/game/${gameId}`);
-    });
-
-    socket.on('updateHost', (newHostId) => {
-      hostName = newHostId;
-      hasJoined = true;
-      // console.log('HostId updated:', newHostId);
+    socket.on('gameCreated', (data) => {
+      if (data.gameId) {
+        console.log(`Server created room, navigating to: /game/${data.gameId}`);
+        // Use goto to perform client-side navigation
+        goto(`/game/${data.gameId}`);
+      }
     });
 
     return () => {
@@ -37,7 +28,7 @@
 
   // Only host can create a lobby
   function createLobby() {
-    if (hostName) {
+    if (hostName.trim() && socket) {
       socket.emit('create-game', { hostName });
     }
   }
@@ -49,7 +40,7 @@
     <input type="text" bind:value={hostName} placeholder={enterYourNamePlaceholder} />
   </div>
   <div>
-    <button on:click={createLobby} disabled={!hostName}>{createLobbyButtonText}</button>
+    <button on:click={createLobby} disabled={!hostName.trim()}>{createLobbyButtonText}</button>
   </div>  
 </main>
 

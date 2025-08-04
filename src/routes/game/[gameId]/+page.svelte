@@ -1,37 +1,37 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { page } from '$app/state';
   import io, { Socket } from 'socket.io-client';
-  import type { Player } from '$lib/types';
 
-  /**
-     * @type {import("socket.io-client").Socket<import("@socket.io/component-emitter").DefaultEventsMap, import("@socket.io/component-emitter").DefaultEventsMap>}
-     */
+  // This `data` prop is passed from your +page.server.ts load function
+  export let data;
+  const { gameId } = data;
+
   let socket: Socket;
-  /** @type {{ name: string }[]} */
-  let hostId: string = '';
-  let users: Player[] = [];
-  let lobbyId: string = page.params.gameId || '';
-  let userName: string = '';
-  let hasJoined: boolean = false;
+  let users: { name: string, id: string }[] = [];
+  let host: { name: string, id: string } | null = null;
+  let hasJoined = false;
+  let username = '';
+  let errorMsg = '';
 
   onMount(() => {
     socket = io();
 
+    // If the user is the host, they will already be in the room.
+    // If they are joining, they will join via the form.
+    // We can also have a 'request-lobby-data' for viewers or refreshers.
     socket.on('connect', () => {
-      console.log('connected to server');
+        console.log('Connected to socket server. Requesting lobby data...');
+        socket.emit('request-lobby-data', gameId);
     });
 
+    // Listen for the full user list (sent on join or on request)
     socket.on('updateUsers', (updatedUsers) => {
+      console.log('Received user list:', updatedUsers);
       users = updatedUsers;
-    });
-
-    // this'll only happen on game creation (for now)
-    // eventually we can let the host give host to another player
-    socket.on('updateHost', (newHostId) => {
-      hostId = newHostId;
-      hasJoined = true;
-      // console.log('HostId updated:', newHostId);
+      // The host is typically the first user in the list
+      if (users.length > 0) {
+        host = users[0]; // this is sinning but it works for now
+      }
     });
 
     socket.on('error', (error) => {
@@ -44,151 +44,100 @@
   });
 
   // Host should not call this function, only other users
-  function joinLobby() {
-    if (userName) {
-      socket.emit('join-lobby', { lobbyId, userName });
+  function handleJoinLobby() {
+    if (username.trim() && socket) {
+      socket.emit('join-lobby', { gameId, username });
       hasJoined = true;
     }
   }
 </script>
 
-<h1>Lobby: {lobbyId}</h1>
+<svelte:head>
+  <title>Game Lobby: {gameId}</title>
+</svelte:head>
 
-{#if !hasJoined}
-  <input type="text" bind:value={userName} placeholder="Enter your name" />
-  <button on:click={joinLobby}>Join Lobby</button>
-{:else}
-  <h2>Users in lobby: {users.length}</h2>
-  <ul>
-    {#each users as user}
-      <li>{user.name}</li>
-    {/each}
-  </ul>
-{/if}
+<div class="lobby-container">
+  <h1 class="title">Game Lobby</h1>
+  <p>Lobby ID: <strong>{gameId}</strong></p>
 
-{#if hostId}
-  <p>Host ID: {hostId}</p>
-{/if}
-
-
-
-
-<!-- src/routes/game/[gameId]/+page.svelte
-<script lang="ts">
-  import { page } from '$app/state';
-  import { onMount } from 'svelte';
-  import io, { type Socket } from 'socket.io-client';
-  // Import our shared type!
-  import type { Game, Player } from '$lib/types'; 
-
-  // Define the event types for the client-side socket
-  // This should match the server-side definition for full type safety
-  interface ServerToClientEvents {
-    // 'update-lobby': (players: Player[]) => void;
-    'game-created': (gameId: string) => void;
-  }
-  interface ClientToServerEvents {
-    'join-game': (gameId: string) => void;
-    'create-game': (hostName: string) => void;
-  }
-
-  let socket;
-  let players = [];
-
-  let gameId: string = page.params.gameId ?? ''; // just to get rid of the error, complains about it being possibly undefined
-  
-  let myPlayerId: string | null = null;
-  let playerName: string = '';
-  let hasJoined: boolean = false;
-  let players: Player[] = []; // This array is now strongly typed
-
-
-  onMount(() => {
-    socket = io();
-
-    socket.on('connect', () => {
-      console.log('Connected to server with ID:', socket.id);
-    });
-
-  });
-
-  async function joinGame() {
-    if (!playerName.trim()) return;
-
-    const response = await fetch('/api/join-game', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gameId, playerName })
-    });
-
-    const result = await response.json();
-
-    if (response.ok) {
-      myPlayerId = result.playerId;
-      hasJoined = true;
-    } else {
-      alert(`Error: ${result.error}`);
-    }
-  }
-</script>
-
-The HTML part of the component remains exactly the same.
-<main>
-    <h1>Avalon Lobby</h1>
-    <p>Game ID: <strong>{gameId}</strong></p>
-    <button on:click={() => {
-        playerName = 'Guest' + Math.floor(Math.random() * 1000);
-        joinGame();
-    }}>
-        Quick Join as Guest
-    </button>
+  {#if errorMsg}
+    <p class="error">Error: {errorMsg}</p>
+  {:else}
     {#if !hasJoined}
-        <div class="join-form">
-            <input type="text" bind:value={playerName} placeholder="Enter your name" />
-            <button on:click={joinGame}>Join Game</button>
-        </div>
-
-    {:else}
-        <h2>Players in Lobby: {players.length}</h2>
-        <p>Your name: <strong>{players.find(p => p.id === myPlayerId)?.name || ''}</strong></p>
-
-        <ul class="player-list">
-            {#each players as player (player.id)}
-                <li>
-                    <span>{player.name}</span>
-                    <div class="controls">
-                        {#if player.id === myPlayerId}
-                            <button on:click={() => changeName(player.id)}>
-                                Edit
-                            </button>
-                        {/if}
-                        <button on:click={() => movePlayer(player.id, 'up')}>▲</button>
-                        <button on:click={() => movePlayer(player.id, 'down')}>▼</button>
-                    </div>
-                </li>
-            {/each}
-        </ul>
-        <button class="start-game-btn">Start Game (Host Only)</button>
-          {#if hasJoined && gameId}
-    <div class="game-link-container">
-      <h2>Your Game Room is Ready!</h2>
-      <p>Share this link with your friends:</p>
-      <div class="link-box">
-        <input type="text" value="{window.location.origin}/game/{gameId}" readonly />
-        <button on:click={copyLink}>{copyButtonText}</button>
+      <div class="join-form">
+        <input
+          type="text"
+          bind:value={username}
+          placeholder="Enter your name"
+        />
+        <button on:click={handleJoinLobby} disabled={!username.trim()}>
+          Join Lobby
+        </button>
       </div>
-      <p><strong>You are the host. </strong></p>
-    </div>
-  {/if}
     {/if}
-</main> -->
 
-<!-- Styles remain the same -->
+    {#if users.length > 0}
+      <div>
+        {#if host}
+          <!-- <h2>Host: {host.name}</h2> -->
+        {/if}
+        <h3>Players ({users.length}):</h3>
+        <ul>
+          {#each users as user (user.id)}
+            <li>{user.name} {#if user.name === host?.name}(Host){/if}</li>
+          {/each}
+        </ul>
+      </div>
+    {:else if !hasJoined}
+        <p>Joining lobby...</p>
+    {:else}
+        <p>Waiting for players...</p>
+    {/if}
+  {/if}
+</div>
+
 <style>
-  main {
+  .lobby-container {
     text-align: center;
     padding: 2rem;
-    font-family: sans-serif;
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    background: linear-gradient(135deg, #232526 0%, #414345 100%);
+    min-height: 100vh;
+    color: #fff;
+  }
+
+  .title {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: #fff;
+    text-shadow:
+      0 2px 8px rgba(0,0,0,0.3),
+      0 1px 0 #007bff,
+      0 0px 40px #007bff44;
+    margin-bottom: 2rem;
+    margin-top: 0.5em;
+    background: linear-gradient(90deg, #007bff 30%, #00c6ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  input[type="text"] {
+    font-size: 1.2rem;
+    padding: 0.7rem 1.2rem;
+    border-radius: 8px;
+    border: 1px solid #007bff;
+    margin-bottom: 1.5rem;
+    width: 250px;
+    max-width: 90vw;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus {
+    border-color: #00c6ff;
+    box-shadow: 0 0 0 2px #00c6ff33;
   }
 
   button {
@@ -199,38 +148,36 @@ The HTML part of the component remains exactly the same.
     background-color: #007bff;
     color: white;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px #007bff33;
   }
 
-  button:hover {
+  button:hover:not(:disabled) {
     background-color: #0056b3;
+    box-shadow: 0 4px 16px #007bff44;
   }
 
   button:disabled {
     background-color: #cccccc;
     cursor: not-allowed;
+    box-shadow: none;
   }
 
-  .game-link-container {
-    margin-top: 2rem;
-    padding: 2rem;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background-color: #f9f9f9;
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0;
   }
 
-  .link-box {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
+  li {
+    font-size: 1.1rem;
+    margin: 0.5rem 0;
+    color: #fff;
   }
 
-  .link-box input {
-    font-size: 1rem;
-    padding: 0.5rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    width: 300px;
-    background-color: #fff;
+  .error {
+    color: #ff4d4f;
+    font-weight: bold;
+    margin-top: 1rem;
   }
 </style>

@@ -6,7 +6,7 @@
 	"scripts": {
 		"dev": "npm-run-all --parallel dev:sveltekit dev:socket",
 		"dev:sveltekit": "vite dev",
-  	"dev:socket": "node src/lib/server/socket-server.js",
+		"dev:socket": "ts-node src/lib/server/socket-server.ts",
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
@@ -22,6 +22,7 @@
 		"npm-run-all": "^4.1.5",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
+		"ts-node": "^10.9.2",
 		"typescript": "^5.0.0",
 		"vite": "^7.0.4"
 	},
