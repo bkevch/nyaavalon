@@ -1,6 +1,8 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { socketStore, gameState } from '$lib/socket-store';
+  import { socketStore, gameState } from '$lib/socketClient';
+    import { hostname } from 'os';
+    import { onMount } from 'svelte';
   const enterYourNamePlaceholder = 'enter your name';
   const createLobbyButtonText = 'create lobby';
   let hostName = '';
@@ -9,9 +11,20 @@
   $: if ($gameState.gameId) {
     goto(`/game/${$gameState.gameId}`);
   }
+  
+  onMount(() => {
+    // this line right here
+    socket.auth = { username };
+    socket.connect();
+  });
+
+
+  // maybe can do something with a svelte rune here to manipulate the hostname?
+  // need to do this
+  // socket.auth = {hostName}
 
   function handleCreateGame() {
-    if (hostName.trim()) {
+    if (hostName.trim()) {      
       socketStore.createGame(hostName);
     }
   }

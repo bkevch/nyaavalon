@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { socketStore, gameState } from '$lib/socket-store';
+  import { socketStore, gameState } from '$lib/socketClient.js';
   import { goto } from '$app/navigation';
 
   // This `data` prop is passed from your +page.server.ts load function

@@ -17,7 +17,7 @@ interface GameState {
   errorMsg: string;
 }
 
-interface ISocket extends Socket {
+export interface ISocket extends Socket {
   name?: string;
   sessionID?: string;
   userID?: string;
@@ -34,29 +34,24 @@ export const gameState: Writable<GameState> = writable({
   errorMsg: ''
 });
 
-// Socket instance (not reactive, just a container)
-// let socket: ISocket | null = null;
+let socket: ISocket;
 
 // Socket store functions
 export const socketStore = {
   // Initialize the socket connection
   connect: () => {
     // if (!browser || socket?.connected) return;
-      
-    const socket = io();
+    // const socket = io();
 
-    socket.onAny((event, ...args) => {
-      console.log(event, args);
-    });
-
-    
-    socket.on("session", ({ sessionID, userID }) => {
-      // attach the session ID to the next reconnection attempts
-      socket.auth = { sessionID };
-      // store it in the localStorage
-      localStorage.setItem("sessionID", sessionID);
-      // save the ID of the user
-      socket.userID = userID;
+    // socket.onAny((event, ...args) => {
+    //   console.log(event, args);
+    // });
+    // const socket: ISocket = io();
+    socket = io();
+    socket.on("session", ({ sessionID, userID }) => {      
+      socket.auth = { sessionID }; // attach the session ID to the next reconnection attempts      
+      localStorage.setItem("sessionID", sessionID); // store it in the localStorage      
+      socket.userID = userID; // save the ID of the user
     });
 
 
@@ -107,7 +102,10 @@ export const socketStore = {
 
   // Emit events through the store
   createGame: (hostName: string) => {
-    if (socket) {
+    socket = io({ autoConnect: false }); // ensure the socket is not connected yet
+    socket.auth = { hostName }; // attach the host name to the socket auth
+    socketStore.connect(); // ensure the socket is connected
+    if (socket) {      
       socket.emit('create-game', { hostName: hostName });
     }
   },
@@ -127,19 +125,19 @@ export const socketStore = {
   },
 
   // Disconnect (use sparingly, usually only on app exit)
-  disconnect: () => {
-    if (socket) {
-      socket.disconnect();
-      socket = null;
-      gameState.set({
-        users: [],
-        host: null,
-        gameId: null,
-        hasJoined: false,
-        errorMsg: ''
-      });
-    }
-  },
+  // disconnect: () => {
+  //   if (socket) {
+  //     socket.disconnect();
+  //     socket = null;
+  //     gameState.set({
+  //       users: [],
+  //       host: null,
+  //       gameId: null,
+  //       hasJoined: false,
+  //       errorMsg: ''
+  //     });
+  //   }
+  // },
 
   // Get the socket instance if needed for advanced operations
   getSocket: () => socket

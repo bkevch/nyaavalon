@@ -1,5 +1,5 @@
 // src/lib/server/socket-server.ts
-
+import crypto from 'crypto';
 import { Server, Socket } from 'socket.io';
 import type { User, Lobby } from '../types';
 import { InMemorySessionStore } from '../sessionStore';
@@ -14,6 +14,7 @@ interface GameLobby {
   host: User;
   users: User[];
 }
+
 export function attachSocketServer(server: any) {
   const io = new Server(server, {
     cors: {
@@ -24,13 +25,15 @@ export function attachSocketServer(server: any) {
 
   // Use a Map to store game state in memory
   const games = new Map();
-  
-  const crypto = require("crypto");
   const randomId = () => crypto.randomBytes(8).toString("hex");
 
   const sessionStore = new InMemorySessionStore();
+
   io.use((socket: ISocket, next) => {
+    console.log('inside io.use')
+    console.log('socket.handshake', socket.handshake);
     const sessionID = socket.handshake.auth.sessionID;
+    console.log(`sessionID: ${sessionID}`);
     if (sessionID) {
       // find existing session
       const session = sessionStore.findSession(sessionID);
@@ -49,6 +52,7 @@ export function attachSocketServer(server: any) {
     socket.sessionID = randomId();
     socket.userID = randomId();
     socket.username = username;
+    console.log(`New session created: ${socket.sessionID} for user ${socket.username} with ID ${socket.userID}`);
     next();
   });
 
