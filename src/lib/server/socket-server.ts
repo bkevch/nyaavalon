@@ -1,8 +1,14 @@
 // src/lib/server/socket-server.ts
 
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import type { User, Lobby } from '../types';
-
+import { InMemorySessionStore } from '../sessionStore';
+interface ISocket extends Socket {
+  name?: string;
+  sessionID?: string;
+  userID?: string;
+  username?: string;
+}
 interface GameLobby {
   gameId: string;
   host: User;
@@ -18,8 +24,48 @@ export function attachSocketServer(server: any) {
 
   // Use a Map to store game state in memory
   const games = new Map();
+  
+  const crypto = require("crypto");
+  const randomId = () => crypto.randomBytes(8).toString("hex");
 
-  io.on('connection', (socket) => {
+  const sessionStore = new InMemorySessionStore();
+  io.use((socket: ISocket, next) => {
+    const sessionID = socket.handshake.auth.sessionID;
+    if (sessionID) {
+      // find existing session
+      const session = sessionStore.findSession(sessionID);
+      if (session) {
+        socket.sessionID = sessionID;
+        socket.userID = session.userID;
+        socket.username = session.username;
+        return next();
+      }
+    }
+    const username = socket.handshake.auth.username;
+    if (!username) {
+      return next(new Error("invalid username"));
+    }
+    // create new session
+    socket.sessionID = randomId();
+    socket.userID = randomId();
+    socket.username = username;
+    next();
+  });
+
+  io.on('connection', (socket: ISocket) => {
+    // persist session
+    sessionStore.saveSession(socket.sessionID, {
+      userID: socket.userID,
+      username: socket.username,
+      connected: true,
+    });
+
+    // emit session details
+    socket.emit("session", {
+      sessionID: socket.sessionID,
+      userID: socket.userID,
+    });
+
     console.log(`Socket connected: ${socket.id}`);
 
     socket.on('create-game', (data: { hostName: string }) => {
@@ -33,10 +79,10 @@ export function attachSocketServer(server: any) {
 
       io.to(gameId).emit('gameCreated', { gameId: gameId });
       console.log(`Emitting event gameCreated: ${gameId}`);
-      io.to(gameId).emit('updateHost', host);
-      console.log(`Emitting event updateHost: ${host}`);
-      io.to(gameId).emit('updateUsers', lobby.users);
-      console.log(`Emitting event updateUsers: ${lobby.users[0].name}`);
+      // io.to(gameId).emit('updateHost', host);
+      // console.log(`Emitting event updateHost: ${host}`);
+      // io.to(gameId).emit('updateUsers', lobby.users);
+      // console.log(`Emitting event updateUsers: ${lobby.users[0].name}`);
       // console.log(`Game created by ${host.name} with ID: ${gameId}`);
     });
 

@@ -16,9 +16,9 @@
   });
 
   // Handle game ended - navigate back to home
-  $: if ($gameState.gameId === null && $gameState.users.length === 0) {
-    goto('/');
-  }
+  // $: if ($gameState.gameId === null && $gameState.users.length === 0) {
+  //   goto('/');
+  // }
 
   function handleJoinLobby() {
     if (username.trim()) {

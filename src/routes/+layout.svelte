@@ -4,9 +4,14 @@
   import { socketStore } from '$lib/socket-store';
 
   onMount(() => {
-    // Initialize the socket connection when the app starts
-    socketStore.connect();
-
+    const sessionID = localStorage.getItem("sessionID");
+    // check if we already had a session.
+    if (sessionID) {
+      // move the client side sessionID storage to layout?
+      // usernameAlreadySelected = true;
+      socketStore.auth = { sessionID };
+      socketStore.connect();
+    }
     // Cleanup on app exit (optional)
     return () => {
       // Usually you don't want to disconnect on page navigation,

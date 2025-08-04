@@ -2,7 +2,6 @@
 
 import { writable, type Writable } from 'svelte/store';
 import { io, type Socket } from 'socket.io-client';
-import { browser } from '$app/environment';
 
 // Define types for your game state
 interface User {
@@ -18,29 +17,52 @@ interface GameState {
   errorMsg: string;
 }
 
-// Create reactive stores
+interface ISocket extends Socket {
+  name?: string;
+  sessionID?: string;
+  userID?: string;
+  username?: string;
+  auth: any;
+}
+
+// Create Svelte reactive stores
 export const gameState: Writable<GameState> = writable({
   users: [],
-  host: null,
+  host: null, 
   gameId: null,
   hasJoined: false,
   errorMsg: ''
 });
 
 // Socket instance (not reactive, just a container)
-let socket: Socket | null = null;
+// let socket: ISocket | null = null;
 
 // Socket store functions
 export const socketStore = {
   // Initialize the socket connection
   connect: () => {
-    if (!browser || socket?.connected) return;
+    // if (!browser || socket?.connected) return;
+      
+    const socket = io();
 
-    socket = io();
-
-    socket.on('connect', () => {
-      console.log('Connected to socket server');
+    socket.onAny((event, ...args) => {
+      console.log(event, args);
     });
+
+    
+    socket.on("session", ({ sessionID, userID }) => {
+      // attach the session ID to the next reconnection attempts
+      socket.auth = { sessionID };
+      // store it in the localStorage
+      localStorage.setItem("sessionID", sessionID);
+      // save the ID of the user
+      socket.userID = userID;
+    });
+
+
+    // socket.on('connect', () => {
+    //   console.log('Connected to socket server');
+    // });
 
     socket.on('gameCreated', (data: { gameId: string }) => {
       gameState.update(state => ({
