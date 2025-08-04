@@ -1,53 +1,28 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import io, { Socket } from 'socket.io-client';
+  import { socketStore, gameState } from '$lib/socket-store';
+  import { goto } from '$app/navigation';
 
   // This `data` prop is passed from your +page.server.ts load function
   export let data;
   const { gameId } = data;
 
-  let socket: Socket;
-  let users: { name: string, id: string }[] = [];
-  let host: { name: string, id: string } | null = null;
-  let hasJoined = false;
-  let username = '';
-  let errorMsg = '';
+  let username: string  = '';
 
   onMount(() => {
-    socket = io();
-
-    // If the user is the host, they will already be in the room.
-    // If they are joining, they will join via the form.
-    // We can also have a 'request-lobby-data' for viewers or refreshers.
-    socket.on('connect', () => {
-        console.log('Connected to socket server. Requesting lobby data...');
-        socket.emit('request-lobby-data', gameId);
-    });
-
-    // Listen for the full user list (sent on join or on request)
-    socket.on('updateUsers', (updatedUsers) => {
-      console.log('Received user list:', updatedUsers);
-      users = updatedUsers;
-      // The host is typically the first user in the list
-      if (users.length > 0) {
-        host = users[0]; // this is sinning but it works for now
-      }
-    });
-
-    socket.on('error', (error) => {
-      alert(error.message);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
+    if ($gameState.users.length === 0) {
+      socketStore.requestLobbyData(gameId);
+    }
   });
 
-  // Host should not call this function, only other users
+  // Handle game ended - navigate back to home
+  $: if ($gameState.gameId === null && $gameState.users.length === 0) {
+    goto('/');
+  }
+
   function handleJoinLobby() {
-    if (username.trim() && socket) {
-      socket.emit('join-lobby', { gameId, username });
-      hasJoined = true;
+    if (username.trim()) {
+      socketStore.joinLobby(gameId, username);
     }
   }
 </script>
@@ -60,10 +35,10 @@
   <h1 class="title">Game Lobby</h1>
   <p>Lobby ID: <strong>{gameId}</strong></p>
 
-  {#if errorMsg}
-    <p class="error">Error: {errorMsg}</p>
+  {#if $gameState.errorMsg}
+    <p class="error">Error: {$gameState.errorMsg}</p>
   {:else}
-    {#if !hasJoined}
+    {#if !$gameState.hasJoined}
       <div class="join-form">
         <input
           type="text"
@@ -76,19 +51,21 @@
       </div>
     {/if}
 
-    {#if users.length > 0}
+    {#if $gameState.users.length > 0}
       <div>
-        {#if host}
-          <!-- <h2>Host: {host.name}</h2> -->
+        {#if $gameState.host}
+          <h2>Host: {$gameState.host.name}</h2>
         {/if}
-        <h3>Players ({users.length}):</h3>
+        <h3>Players ({$gameState.users.length}):</h3>
         <ul>
-          {#each users as user (user.id)}
-            <li>{user.name} {#if user.name === host?.name}(Host){/if}</li>
+          {#each $gameState.users as user (user.id)}
+            <li>{user.name} 
+            {#if user.id === $gameState.host?.id}(Host){/if}
+          </li>
           {/each}
         </ul>
       </div>
-    {:else if !hasJoined}
+    {:else if !$gameState.hasJoined}
         <p>Joining lobby...</p>
     {:else}
         <p>Waiting for players...</p>

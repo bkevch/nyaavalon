@@ -1,46 +1,32 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import io, { Socket } from 'socket.io-client';
-
-  const enterYourNamePlaceholder = 'enter your nyame';
-  const createLobbyButtonText = 'cweate wobby';
-
-  let socket: Socket;
+  import { socketStore, gameState } from '$lib/socket-store';
+  const enterYourNamePlaceholder = 'enter your name';
+  const createLobbyButtonText = 'create lobby';
   let hostName = '';
-  let hasJoined = true;
 
-  onMount(() => {
-    socket = io();
+  // React to gameCreated events
+  $: if ($gameState.gameId) {
+    goto(`/game/${$gameState.gameId}`);
+  }
 
-    socket.on('gameCreated', (data) => {
-      if (data.gameId) {
-        console.log(`Server created room, navigating to: /game/${data.gameId}`);
-        // Use goto to perform client-side navigation
-        goto(`/game/${data.gameId}`);
-      }
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  });
-
-  // Only host can create a lobby
-  function createLobby() {
-    if (hostName.trim() && socket) {
-      socket.emit('create-game', { hostName });
+  function handleCreateGame() {
+    if (hostName.trim()) {
+      socketStore.createGame(hostName);
     }
   }
 </script>
 
 <main>
   <h1 class="title">nyaavalon</h1>
+  {#if $gameState.errorMsg}
+    <p class="error">Error: {$gameState.errorMsg}</p>
+  {/if}
   <div>
     <input type="text" bind:value={hostName} placeholder={enterYourNamePlaceholder} />
   </div>
   <div>
-    <button on:click={createLobby} disabled={!hostName.trim()}>{createLobbyButtonText}</button>
+    <button on:click={handleCreateGame} disabled={!hostName.trim()}>{createLobbyButtonText}</button>
   </div>  
 </main>
 

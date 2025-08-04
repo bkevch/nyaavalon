@@ -1,13 +1,6 @@
-// src/lib/types.ts
-
-export interface Player {
-    id: string; // Unique ID for each player
-    name: string;
-}
-
 export interface Game {
     id: string;
-    players: Player[];
+    players: User[];
     state: 'lobby' | 'in-progress' | 'finished';
     hostId: string;
     // We can add more game state properties here later
@@ -15,6 +8,19 @@ export interface Game {
 
 export interface Lobby { 
     gameId: string;
-    users: Player[];
+    users: User[];
     hostId: string;
+}
+    
+export interface User {
+    name: string;
+    id: string;
+}
+
+export interface GameState {
+    users: User[];
+    host: User | null;
+    gameId: string | null;
+    hasJoined: boolean; // is this only front end?
+    errorMsg: string;
 }

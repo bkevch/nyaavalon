@@ -1,7 +1,13 @@
 // src/lib/server/socket-server.ts
 
 import { Server } from 'socket.io';
+import type { User, Lobby } from '../types';
 
+interface GameLobby {
+  gameId: string;
+  host: User;
+  users: User[];
+}
 export function attachSocketServer(server: any) {
   const io = new Server(server, {
     cors: {
@@ -9,35 +15,34 @@ export function attachSocketServer(server: any) {
       methods: ["GET", "POST"]
     }
   });
+
   // Use a Map to store game state in memory
   const games = new Map();
 
   io.on('connection', (socket) => {
-    console.log(`User connected: ${socket.id}`);
+    console.log(`Socket connected: ${socket.id}`);
 
-    socket.on('create-game', ({ hostName }: { hostName: string }) => {
+    socket.on('create-game', (data: { hostName: string }) => {
       const gameId = Math.random().toString(36).substring(2, 8);
-      const host = { name: hostName, id: socket.id };
-
-      const lobby = {
-        gameId: gameId,
-        host: host,
-        users: [host] // The host is the first user
-      };
+      const host = { name: data.hostName, id: gameId.substring(3, 8) }; // Use a unique ID for the host, ripoff the gameId
+      console.log(`host has name : ${host.name} and id: ${host.id}`);
+      const lobby = { gameId: gameId, host: host, users: [host] }; 
 
       games.set(gameId, lobby);
       socket.join(gameId);
 
-      // Tell the client the game was created so it can navigate
-      socket.emit('gameCreated', { gameId: gameId });
-
-      // Send the initial host/user data to the creator
+      io.to(gameId).emit('gameCreated', { gameId: gameId });
+      console.log(`Emitting event gameCreated: ${gameId}`);
       io.to(gameId).emit('updateHost', host);
+      console.log(`Emitting event updateHost: ${host}`);
       io.to(gameId).emit('updateUsers', lobby.users);
-      console.log(`Game created by ${hostName} with ID: ${gameId}`);
+      console.log(`Emitting event updateUsers: ${lobby.users[0].name}`);
+      // console.log(`Game created by ${host.name} with ID: ${gameId}`);
     });
 
-    socket.on('join-lobby', ({ gameId, username }: { gameId: string, username: string }) => {
+    socket.on('join-lobby', (data: { gameId: string, username: string }) => {
+      let gameId = data.gameId;
+      let username = data.username;
       if (games.has(gameId)) {
         const game = games.get(gameId);
         const newUser = { name: username, id: socket.id };
@@ -45,7 +50,6 @@ export function attachSocketServer(server: any) {
         game.users.push(newUser);
         socket.join(gameId);
 
-        // Broadcast the updated user list to everyone in the room
         io.to(gameId).emit('updateUsers', game.users);
         console.log(`${username} joined game ${gameId}`);
       } else {
@@ -53,7 +57,6 @@ export function attachSocketServer(server: any) {
       }
     });
 
-    // This handles users who join via a link and need the initial lobby state
     socket.on('request-lobby-data', (gameId: string) => {
       if (games.has(gameId)) {
         const game = games.get(gameId);
